@@ -13,7 +13,9 @@ import tensorflow.keras.backend as K
 # sys.path.append(module_path2)
 
 from dc_ldpc.dropconnect_ldpc import *
-from dropconnect.layers import DropConnectDense, DropConnect
+from dropconnect.DClayers_tf import *
+
+from matplotlib import pyplot as plt
 
 # Load MNIST dataset as NumPy arrays
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -62,3 +64,15 @@ history = model.fit(
 print('Evaluate on test data:')
 results = model.evaluate(x_test, y_test, batch_size=128, verbose = 2)
 print('Test loss = {0}, Test acc: {1}'.format(results[0], results[1]))
+
+# Plot
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(1, len(loss) + 1)
+plt.plot(epochs, loss, 'y', label='Training loss')
+plt.plot(epochs, val_loss, 'r', label='Validation loss')
+plt.title('Training and validation loss - MNIST with DropConnect')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()

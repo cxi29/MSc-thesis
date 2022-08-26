@@ -97,7 +97,6 @@ class LDPC_DropConnectDense(Dense):
 
 class LDPC_DropConnect(Wrapper):
     def __init__(self, layer, prob=0.0, **kwargs):
-
         if not 0. <= prob < 1.:
             raise NameError('prob must be at range [0, 1)]')
         self.prob = prob
