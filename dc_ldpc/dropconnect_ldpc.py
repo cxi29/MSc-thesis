@@ -3,9 +3,9 @@ import tensorflow.keras.backend as K
 
 from tensorflow.keras.layers import Dense, Conv2D, Wrapper
 from tensorflow.keras.layers import ReLU, BatchNormalization, Flatten, MaxPool2D, Input
-from dropconnect_tensorflow.genldpc import gen_ldpc
+from genldpc import gen_ldpc
 
-import genldpc
+# import genldpc
 
 
 
