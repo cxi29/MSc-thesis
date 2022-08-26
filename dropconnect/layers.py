@@ -1,5 +1,5 @@
-from keras.layers import Dense, Wrapper
-import keras.backend as K
+from tensorflow.keras.layers import Dense, Wrapper
+import tensorflow.keras.backend as K
 
 
 class DropConnectDense(Dense):
@@ -12,12 +12,11 @@ class DropConnectDense(Dense):
     def call(self, x, mask=None):
         if 0. < self.prob < 1.:
             self.kernel = K.in_train_phase(K.dropout(self.kernel, self.prob) * (1-self.prob), self.kernel)
-            self.b = K.in_train_phase(K.dropout(self.b, self.prob) * (1-self.prob), self.b)
+            self.bias = K.in_train_phase(K.dropout(self.bias, self.prob) * (1-self.prob), self.bias)
 
-        # Same as original
-        output = K.dot(x, self.W)
-        if self.bias:
-            output += self.b
+        output = K.dot(x, self.kernel)
+        if self.use_bias:
+            output += self.bias
         return self.activation(output)
 
 
@@ -42,4 +41,5 @@ class DropConnect(Wrapper):
         if 0. < self.prob < 1.:
             self.layer.kernel = K.in_train_phase(K.dropout(self.layer.kernel, self.prob) * (1-self.prob), self.layer.kernel)
             self.layer.bias = K.in_train_phase(K.dropout(self.layer.bias, self.prob) * (1-self.prob), self.layer.bias) 
+        
         return self.layer.call(x)
