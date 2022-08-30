@@ -6,6 +6,10 @@ import tensorflow.keras.backend as K
 
 from dc_ldpc.dropconnect_ldpc import *
 from dropconnect.DClayers_tf import *
+
+import os
+abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 from matplotlib import pyplot as plt
 
 # Load MNIST dataset as NumPy arrays
@@ -71,98 +75,21 @@ for md in models:
         epochs=100
         )
     histories.append(history)
+
+    # Save the models
+    mdsave_path = os.path.join(abs_path, 'saved_models')
+    print('Training completed, save the model.')
+    md.save(mdsave_path + '\\model_%d' %(models.index(md) + 1))
+    print('Model is saved in folder: %s ...' %(mdsave_path))
+
+    # Evaluation
     results = md.evaluate(x_test, y_test, batch_size=128, verbose=2)
     print('Test loss = {0}, Test acc: {1}'.format(results[0], results[1]))
     test_results.append(results)
 
-# """ Compile the models """
-# md1.compile(
-#     optimizer=tf.keras.optimizers.Adam(0.0001),
-#     loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-#     metrics=['accuracy'])
-
-# md2.compile(
-#     optimizer=tf.keras.optimizers.Adam(0.0001),
-#     loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-#     metrics=['accuracy'])
-
-# md3.compile(
-#     optimizer=tf.keras.optimizers.Adam(0.0001),
-#     loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-#     metrics=['accuracy'])
-
-# md4.compile(
-#     optimizer=tf.keras.optimizers.Adam(0.0001),
-#     loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-#     metrics=['accuracy'])
-
-
-
-# """ Network training and evaluation"""
-# hist1 = md1.fit(
-#     x_train,
-#     y_train,
-#     batch_size=64,
-#     validation_split=0.1,
-#     epochs=100)
-# print('Evaluate model 1 on test data:')
-# results_1 = md1.evaluate(x_test, y_test, batch_size=128, verbose=2)
-# print('Test loss = {0}, Test acc: {1}'.format(results_1[0], results_1[1]))
-
-# hist2 = md2.fit(
-#     x_train,
-#     y_train,
-#     batch_size=64,
-#     validation_split=0.1,
-#     epochs=100)
-# print('Evaluate model 2 on test data:')
-# results_2 = md2.evaluate(x_test, y_test, batch_size=128, verbose=2)
-# print('Test loss = {0}, Test acc: {1}'.format(results_2[0], results_2[1]))
-
-# hist3 = md3.fit(
-#     x_train,
-#     y_train,
-#     batch_size=64,
-#     validation_split=0.1,
-#     epochs=100)
-# print('Evaluate model 3 on test data:')
-# results_3 = md3.evaluate(x_test, y_test, batch_size=128, verbose=2)
-# print('Test loss = {0}, Test acc: {1}'.format(results_3[0], results_3[1]))
-
-# hist4 = md4.fit(
-#     x_train,
-#     y_train,
-#     batch_size=64,
-#     validation_split=0.1,
-#     epochs=100)
-# print('Evaluate model 4 on test data:')
-# results_4 = md4.evaluate(x_test, y_test, batch_size=128, verbose=2)
-# print('Test loss = {0}, Test acc: {1}'.format(results_4[0], results_4[1]))
-
-# def evaluate_model(dataX, dataY, n_folds=5):
-# 	scores, histories = list(), list()
-# 	# prepare cross validation
-# 	kfold = KFold(n_folds, shuffle=True, random_state=1)
-# 	# enumerate splits
-# 	for train_ix, test_ix in kfold.split(dataX):
-# 		# define model
-# 		model = define_model()
-# 		# select rows for train and test
-# 		trainX, trainY, testX, testY = dataX[train_ix], dataY[train_ix], dataX[test_ix], dataY[test_ix]
-# 		# fit model
-# 		history = model.fit(trainX, trainY, epochs=10, batch_size=32, validation_data=(testX, testY), verbose=0)
-# 		# evaluate model
-# 		_, acc = model.evaluate(testX, testY, verbose=0)
-# 		print('> %.3f' % (acc * 100.0))
-# 		# stores scores
-# 		scores.append(acc)
-# 		histories.append(history)
-# 	return scores, histories
 
 """ Make some plots """
-import os
-abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-save_path = os.path.join(abs_path, 'plottings')
+figsave_path = os.path.join(abs_path, 'plottings')
 
 def results_plot(histories):
     """ 
@@ -184,15 +111,7 @@ def results_plot(histories):
         plt.plot(histories[i].history['val_accuracy'], color='orange', label='test')
         
         plt.suptitle('Test results of model %d' %(i))
-        plt.savefig(save_path + '\\diagnostics_model_%d.png' %(i))
+        plt.savefig(figsave_path + '\\diagnostics_model_%d.png' %(i))
 
-# loss = history.history['loss']
-# val_loss = history.history['val_loss']
-# epochs:int = range(1, len(loss) + 1)
-# plt.plot(epochs, loss, 'y', label='Training loss')
-# plt.plot(epochs, val_loss, 'r', label='Validation loss')
-# plt.title('Training and validation loss - MNIST with DropConnect')
-# plt.xlabel('Epochs')
-# plt.ylabel('Loss')
-# plt.legend()
-# plt.show()
+print('Plot the fitting results...')
+results_plot(histories)
