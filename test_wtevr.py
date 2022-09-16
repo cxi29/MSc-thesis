@@ -1,70 +1,75 @@
 # """ CNN for MNIST classification """
 # example of loading the mnist dataset
-import tensorflow as tf
-import numpy as np
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPool2D, Flatten, Dense, BatchNormalization, ReLU
-import os
-from matplotlib import pyplot as plt
+# import tensorflow as tf
+# import numpy as np
+# from tensorflow.keras.datasets import mnist
+# from tensorflow.keras import Sequential
+# from tensorflow.keras.layers import Conv2D, MaxPool2D, Flatten, Dense, BatchNormalization, ReLU
+# import os
+# from matplotlib import pyplot as plt
 
-# load dataset
-(x_train, y_train), (x_test, y_test) = mnist.load_data()
-# summarize loaded dataset
-print('Train: X=%s, y=%s' % (x_train.shape, y_train.shape))
-print('Test: X=%s, y=%s' % (x_test.shape, y_test.shape))
-# # plot first few images
-# for i in range(9):
-# 	# define subplot
-# 	plt.subplot(330 + 1 + i)
-# 	# plot raw pixel data
-# 	plt.imshow(x_train[i], cmap=plt.get_cmap('gray'))
-# # show the figure
-# plt.show()
-# reshape dataset to have a single channel
-x_train = np.expand_dims(x_train, axis=-1).astype('float32') / 255
-x_test = np.expand_dims(x_test, axis=-1).astype('float32') / 255
+# # load dataset
+# (x_train, y_train), (x_test, y_test) = mnist.load_data()
+# # summarize loaded dataset
+# print('Train: X=%s, y=%s' % (x_train.shape, y_train.shape))
+# print('Test: X=%s, y=%s' % (x_test.shape, y_test.shape))
+# # # plot first few images
+# # for i in range(9):
+# # 	# define subplot
+# # 	plt.subplot(330 + 1 + i)
+# # 	# plot raw pixel data
+# # 	plt.imshow(x_train[i], cmap=plt.get_cmap('gray'))
+# # # show the figure
+# # plt.show()
+# # reshape dataset to have a single channel
+# x_train = np.expand_dims(x_train, axis=-1).astype('float32') / 255
+# x_test = np.expand_dims(x_test, axis=-1).astype('float32') / 255
 
-# define cnn model
-X = tf.keras.layers.Input(shape=(28, 28, 1))
-x = Conv2D(filters=64, kernel_size=3, strides=(1, 1), padding='valid')(X)
-x = BatchNormalization()(x)
-x = ReLU()(x)
-x = MaxPool2D((2,2))(x)
-x = Conv2D(filters=128, kernel_size=3, strides=(1, 1), padding='valid')(x)
-x = BatchNormalization()(x)
-x = ReLU()(x)
-x = MaxPool2D((2,2))(x)
-x = Flatten()(x)
-x = Dense(units=64, activation="relu", use_bias=True)(x)
-y = Dense(10, activation="softmax")(x)
+# # define cnn model
+# X = tf.keras.layers.Input(shape=(28, 28, 1))
+# x = Conv2D(filters=64, kernel_size=3, strides=(1, 1), padding='valid')(X)
+# x = BatchNormalization()(x)
+# x = ReLU()(x)
+# x = MaxPool2D((2,2))(x)
+# x = Conv2D(filters=128, kernel_size=3, strides=(1, 1), padding='valid')(x)
+# x = BatchNormalization()(x)
+# x = ReLU()(x)
+# x = MaxPool2D((2,2))(x)
+# x = Flatten()(x)
+# x = Dense(units=64, activation="relu", use_bias=True)(x)
+# y = Dense(10, activation="softmax")(x)
 
-model = tf.keras.models.Model(X, y)
+# model = tf.keras.models.Model(X, y)
 
 
-model.compile(
-    optimizer=tf.keras.optimizers.Adam(0.0001),  # Utilize optimizer
-    loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-    metrics=['accuracy'])
+# model.compile(
+#     optimizer=tf.keras.optimizers.Adam(0.0001),  # Utilize optimizer
+#     loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+#     metrics=['accuracy'])
 
-history = model.fit(
-	x_train,
-	y_train,
-	batch_size=64,
-	validation_split=0.1,
-	epochs=10)
+# history = model.fit(
+# 	x_train,
+# 	y_train,
+# 	batch_size=64,
+# 	validation_split=0.1,
+# 	epochs=10)
 
-# Save the model
-abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-save_path = os.path.join(abs_path, 'DropConnect_LDPC\\saved_models')
-model.save('save_path' + '\\savingtest')
+# # Save the model
+# abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# save_path = os.path.join(abs_path, 'DropConnect_LDPC\\saved_models')
+# model.save(save_path + '\\savingtest')
 
-# Reload the model
-from tensorflow.keras.models import load_model
-md_reload = load_model('save_path' + '\\savingtest')
-md_reload.summary()
+# # Reload the model
+# from tensorflow.keras.models import load_model
+# abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# save_path = os.path.join(abs_path, 'DropConnect_LDPC\\saved_models')
+# # md_reload = load_model(save_path + '\\savingtest')
+# md_reload = load_model(save_path + '\\model_1')
+# md_reload.summary()
 
-history = md_reload.evaluate(x_test, y_test, batch_size=128, verbose=2)
+# x_test = x_test.reshape(-1, 784).astype('float32') / 255
+
+# history = md_reload.evaluate(x_test, y_test, batch_size=128, verbose=1)
 
 # """ Plotting """
 # import matplotlib.pyplot as plt
@@ -90,3 +95,25 @@ history = md_reload.evaluate(x_test, y_test, batch_size=128, verbose=2)
 # # ax.plot([0,1,2], [10,20,3])
 # # fig.savefig('path/to/save/image/to.png')   # save the figure to file
 # # plt.close(fig)    # close the figure window
+
+
+""" Have a look at the LDPC matrix generation """
+from dc_ldpc.genldpc import gen_ldpc
+# import numpy as np
+
+n = 128
+m = 64
+# H = gen_ldpc(n,m,0.95)
+H, _ = gen_ldpc(64, 50, 5)
+
+print(H)
+
+# # def decimal_range(start, stop, increment):
+# #     while start < stop: # and not math.isclose(start, stop): Py>3.5
+# #         yield start
+# #         start += increment
+
+# # for p in decimal_range(0, 0.9, 0.1):
+# # 	print("The dropping probability is: %f" %(p))
+# # 	print(gen_ldpc(n, m, p))
+

@@ -96,6 +96,7 @@ def results_plot(histories):
     :param history: history attribute after model training
     """
     for i in range(len(histories)):
+        fig = plt.figure()
 		# plot loss
         plt.subplot(2, 1, 1)
         plt.title('Cross Entropy Loss')
@@ -111,7 +112,10 @@ def results_plot(histories):
         plt.plot(histories[i].history['val_accuracy'], color='orange', label='test')
         
         plt.suptitle('Test results of model %d' %(i))
+        plt.tight_layout()
         plt.savefig(figsave_path + '\\diagnostics_model_%d.png' %(i))
+        plt.close(fig)
 
 print('Plot the fitting results...')
 results_plot(histories)
+
