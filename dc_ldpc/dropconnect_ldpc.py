@@ -22,8 +22,9 @@ def gen_ldpc (n, m, prob):
     return H
 
 class LDPC_DropConnectDense(Dense):
-    def __init__(self, *args, **kwargs):
-        self.prob = kwargs.pop('prob', 0.5)
+    def __init__(self, *args, prob, **kwargs):
+        # self.prob = kwargs.pop('prob', 0.5)
+        self.prob = prob
         if not 0. <= self.prob < 1.:
             raise NameError('prob must be at range [0, 1)]')
         super(LDPC_DropConnectDense, self).__init__(*args, **kwargs)

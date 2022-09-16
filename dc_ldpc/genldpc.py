@@ -15,22 +15,22 @@ from pyldpc import make_ldpc, parity_check_matrix
 #     H = parity_check_matrix(n, dv, dc)
 #     return H
 
-def gen_ldpc(n, m, dv):
-    dc = int(n * dv / m)
-    p = dv / m
-    assert(n*dv == m*dc)
-    H = parity_check_matrix(n, dv, dc)
-    return H, p
+# def gen_ldpc(n, m, dv):
+#     dc = int(n * dv / m)
+#     p = dv / m
+#     assert(n*dv == m*dc)
+#     H = parity_check_matrix(n, dv, dc)
+#     return H, p
 
-# def gen_ldpc(n, k, dv):
-#     dc = n * dv / (n-k)
-#     assert(n * dv == (n-k) * dc)
-#     H = np.zeros(n-k, n)
-#     ones_at_rows = np.zeros(n-k, 1)
-#     for i in range(1, n+1):
-#         rows = np.arange(1, n-k+1)
-#         rows = rows(ones_at_rows < dc)
-#         # shuffle rows
-#         rows = np.random.permutation(rows)
+def gen_ldpc(n, k, dv):
+    dc = n * dv / (n-k)
+    assert(n * dv == (n-k) * dc)
+    H = np.zeros(n-k, n)
+    ones_at_rows = np.zeros(n-k, 1)
+    for i in range(1, n+1):
+        rows = np.arange(1, n-k+1)
+        rows = rows(ones_at_rows < dc)
+        # shuffle rows
+        rows = np.random.permutation(rows)
 
 

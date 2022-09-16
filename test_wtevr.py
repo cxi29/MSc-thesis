@@ -97,16 +97,16 @@
 # # plt.close(fig)    # close the figure window
 
 
-""" Have a look at the LDPC matrix generation """
-from dc_ldpc.genldpc import gen_ldpc
-# import numpy as np
+# """ Have a look at the LDPC matrix generation """
+# from dc_ldpc.genldpc import gen_ldpc
+# # import numpy as np
 
-n = 128
-m = 64
-# H = gen_ldpc(n,m,0.95)
-H, _ = gen_ldpc(64, 50, 5)
+# n = 128
+# m = 64
+# # H = gen_ldpc(n,m,0.95)
+# H, _ = gen_ldpc(64, 50, 5)
 
-print(H)
+# print(H)
 
 # # def decimal_range(start, stop, increment):
 # #     while start < stop: # and not math.isclose(start, stop): Py>3.5
@@ -117,3 +117,15 @@ print(H)
 # # 	print("The dropping probability is: %f" %(p))
 # # 	print(gen_ldpc(n, m, p))
 
+""" Try to use matlab script to generate... """
+import matlab.engine
+n = 784
+m = 128
+k = n - m
+p = 1/8
+dv = m*p
+dc = n*p
+eng = matlab.engine.start_matlab()
+eng.cd(r'dc_ldpc', nargout = 0)
+eng.generate_regular_H(n,k,dv,dc)
+# TODO: store the output matrix and link with the model.
