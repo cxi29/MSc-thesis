@@ -1,5 +1,5 @@
 import numpy as np
-from pyldpc import make_ldpc, parity_check_matrix
+# from pyldpc import make_ldpc, parity_check_matrix
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -7,7 +7,8 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Dense, Conv2D, Wrapper
 from tensorflow.keras.layers import ReLU, BatchNormalization, Flatten, MaxPool2D, Input
 
-# from dc_ldpc.genldpc import gen_ldpc
+from dc_ldpc.genldpc import parity_check_matrix
+
 def gen_ldpc (n, m, prob):
     """ 
     :param n: Nr. of columns in ldpc matrix (input features in neural network).
@@ -45,13 +46,13 @@ class LDPC_DropConnectDense(Dense):
         # return self.activation(output)        
 
         if train:
-            ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob)
+            ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob) * (1-self.prob)
             mask = tf.cast(ldpc_mask, tf.float32)
             self.kernel = tf.multiply(self.kernel, mask)
             self.bias = tf.multiply(self.bias, mask)
             output = tf.matmul(inputs, self.kernel)
         else:
-            output = tf.matmul(inputs, self.kernel)        
+            output = tf.matmul(inputs, self.kernel) * (1-self.prob)    
         if self.use_bias:
             output += self.bias
         return self.activation(output)          
