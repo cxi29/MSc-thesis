@@ -98,15 +98,79 @@
 
 
 # """ Have a look at the LDPC matrix generation """
-# from dc_ldpc.genldpc import gen_ldpc
-# # import numpy as np
+# # from pyldpc import parity_check_matrix
+# import numpy as np
+# from pyldpc import utils
 
+
+# def parity_check_matrix(n_code, d_v, d_c, seed=None):
+#     """
+#     Inherited from pyldpc/code.py
+
+#     """
+#     rng = utils.check_random_state(seed)
+
+#     if d_v <= 1:
+#         raise ValueError("""d_v must be at least 2.""")
+
+#     if d_c <= d_v:
+#         raise ValueError("""d_c must be greater than d_v.""")
+
+#     if n_code % d_c:
+#         raise ValueError("""d_c must divide n for a regular LDPC matrix H.""")
+
+#     n_equations = (n_code * d_v) // d_c
+
+#     block = np.zeros((n_equations // d_v, n_code), dtype=int)
+#     H = np.empty((n_equations, n_code))
+#     H_check = np.empty((1, n_code)) # Check if  there is circle in H
+#     block_size = n_equations // d_v
+
+#     # Filling the first block with consecutive ones in each row of the block
+
+#     for i in range(block_size):
+#         for j in range(i * d_c, (i+1) * d_c):
+#             block[i, j] = 1
+#     H[:block_size] = block
+
+#     # reate remaining blocks by permutations of the first block's columns:
+#     for i in range(1, d_v):
+#         H_t = rng.permutation(block.T).T
+#         c = circle_check(H_t, block_size, d_c)
+#         while (c == 1):
+#             H_t = rng.permutation(block.T).T
+#             c = circle_check(H_t, block_size, d_c)
+#         H[i * block_size: (i + 1) * block_size] = H_t         
+#     H = H.astype(int)
+#     return H
+
+# def circle_check(H_t, block_size, d_c):
+#     for j in range(block_size):
+#         # c_sum = 0
+#         H_check = np.sum(H_t[:, j*d_c:(j+1)*d_c], axis=1)
+#         for k in range(block_size):
+#             # if (H_check[k] > 2):
+#             #     return 1
+#             # if (H_check[k] == 2):
+#             #     c_sum = c_sum +1
+#             #     if (c_sum > 1):
+#             #         return 1
+#             if (H_check[k] > 1):
+#                 return 1
+#     return 0
+
+# """ Configuration marked: n=128, m=64, dc=4, coding rate=0.5 """
 # n = 128
 # m = 64
+# dc = 4
+# dv = m*dc//n
+# # dv = 3
 # # H = gen_ldpc(n,m,0.95)
-# H, _ = gen_ldpc(64, 50, 5)
+# # H, _ = gen_ldpc(64, 50, 5)
+# H = parity_check_matrix(n,dv,dc)
 
 # print(H)
+
 
 # # def decimal_range(start, stop, increment):
 # #     while start < stop: # and not math.isclose(start, stop): Py>3.5
@@ -117,15 +181,33 @@
 # # 	print("The dropping probability is: %f" %(p))
 # # 	print(gen_ldpc(n, m, p))
 
-""" Try to use matlab script to generate... """
-import matlab.engine
-n = 784
-m = 128
-k = n - m
-p = 1/8
-dv = m*p
-dc = n*p
-eng = matlab.engine.start_matlab()
-eng.cd(r'dc_ldpc', nargout = 0)
-eng.generate_regular_H(n,k,dv,dc)
-# TODO: store the output matrix and link with the model.
+# """ Try to use matlab script to generate... """
+# import matlab.engine
+# n = 784
+# m = 128
+# k = n - m
+# p = 1/8
+# dv = m*p
+# dc = n*p
+# eng = matlab.engine.start_matlab()
+# eng.cd(r'dc_ldpc', nargout = 0)
+# print(eng.generate_regular_H(n,k,dv,dc))
+# # TODO: store the output matrix and link with the model.
+
+# import numpy as np
+# from matplotlib import pyplot as plt
+# x = np.arange(1,12)
+# acc = [0.07999963016416878, 0.08147271554172039, 0.08131724742986261, 0.08268744261618703, 0.09019401749782265, 0.0824192551568504, 0.08465942001957447, 0.08883231503516435, 0.09520135155059398, 0.08906544685773551, 0.09224988257139921]
+# plt.plot(x,acc)
+# plt.show()
+
+""" Calculate the rank of matrices """
+from dc_ldpc import genldpc
+n = 128
+m = 64
+p = 0.75
+dv = int((1-p) * m)
+dc = int((1-p) * n)
+H = genldpc.parity_check_matrix(n, m, dv, dc)
+rank = genldpc.rank_cal(H)
+print("The rank of matrix is %d." %(rank))

@@ -1,5 +1,4 @@
 import numpy as np
-# from pyldpc import make_ldpc, parity_check_matrix
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -16,46 +15,49 @@ def gen_ldpc (n, m, prob):
     :param prob: Dropout probability p.
     """
     # seed = np.random.RandomState(826)
-    dv = (1-prob) * m
-    dc = (1-prob) * n
+    dv = int((1-prob) * m)
+    dc = int((1-prob) * n)
     # H = make_ldpc(n, dv, dc, seed=seed, sparse=True)
-    H = parity_check_matrix(n, dv, dc)
+    H = parity_check_matrix(n, m, dv, dc)
     return H
 
 class LDPC_DropConnectDense(Dense):
-    def __init__(self, *args, prob, **kwargs):
-        # self.prob = kwargs.pop('prob', 0.5)
-        self.prob = prob
+    def __init__(self, **kwargs):
+        self.prob = kwargs.pop('prob')
         if not 0. <= self.prob < 1.:
             raise NameError('prob must be at range [0, 1)]')
-        super(LDPC_DropConnectDense, self).__init__(*args, **kwargs)
+        super(LDPC_DropConnectDense, self).__init__(**kwargs)
 
-    def build(self, input_shape):
-        self.in_feature = input_shape[-2]
+    def build(self, input_shape): 
+        self.in_feature = input_shape[-1]
+
         super(LDPC_DropConnectDense, self).build(input_shape)
 
-    def call(self, inputs, train=False):
-        # ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob)
-        # mask = tf.cast(ldpc_mask, tf.float32)
-        # kernel = K.in_train_phase(tf.multiply(kernel, mask), kernel)
+    def call(self, inputs):
+        
+        ldpc_mask = gen_ldpc(self.in_feature, self.units, self.prob).T
+        ddmask = tf.cast(ldpc_mask, tf.float32)       
+        self.kernel = K.in_train_phase(tf.multiply(self.kernel, ddmask), self.kernel)        
+        # self.kernel = K.in_train_phase(tf.multiply(self.kernel,
+        #     tf.cast(gen_ldpc(self.units, self.in_feature, self.prob), tf.float32)), self.kernel)
         # self.bias = K.in_train_phase(tf.multiply(self.bias, mask), self.bias)        
-        # output = tf.matmul(inputs, kernel)
+        output = tf.matmul(inputs, self.kernel)
           
-        # if self.use_bias:
-        #     output += self.bias
-        # return self.activation(output)        
-
-        if train:
-            ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob) * (1-self.prob)
-            mask = tf.cast(ldpc_mask, tf.float32)
-            self.kernel = tf.multiply(self.kernel, mask)
-            self.bias = tf.multiply(self.bias, mask)
-            output = tf.matmul(inputs, self.kernel)
-        else:
-            output = tf.matmul(inputs, self.kernel) * (1-self.prob)    
         if self.use_bias:
             output += self.bias
-        return self.activation(output)          
+        return self.activation(output)        
+
+        # if self.train:
+        #     ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob)
+        #     mask = tf.cast(ldpc_mask, tf.float32)
+        #     self.kernel = tf.multiply(self.kernel, mask) * (1-self.prob)
+        #     self.bias = tf.multiply(self.bias, mask) * (1-self.prob)
+        #     output = tf.matmul(inputs, self.kernel)
+        # else:
+        #     output = tf.matmul(inputs, self.kernel) * (1-self.prob)    
+        # if self.use_bias:
+        #     output += self.bias
+        # return self.activation(output)          
         
 
 
@@ -84,15 +86,3 @@ class LDPC_DropConnect(Wrapper):
                                                                      self.layer.trainable_weights[counter])
         return self.layer.call(x)
 
-    # def call(self, inputs, train=False):
-    #     if train:
-    #         ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob)
-    #         mask = tf.cast(ldpc_mask, tf.float32)
-    #         self.kernel = tf.multiply(self.kernel, mask)
-    #         self.bias = tf.multiply(self.bias, mask)
-    #         output = tf.matmul(inputs, self.kernel)
-    #     else:
-    #         output = tf.matmul(inputs, self.kernel)
-    #     if self.use_bias:
-    #         output += self.bias
-    #     return self.layer.call(output)

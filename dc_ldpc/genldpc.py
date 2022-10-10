@@ -26,7 +26,7 @@ import numpy as np
 from pyldpc import utils
 
 
-def parity_check_matrix(n_code, d_v, d_c, seed=None):
+def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
     """
     Inherited from pyldpc/code.py
 
@@ -42,7 +42,8 @@ def parity_check_matrix(n_code, d_v, d_c, seed=None):
     if n_code % d_c:
         raise ValueError("""d_c must divide n for a regular LDPC matrix H.""")
 
-    n_equations = (n_code * d_v) // d_c
+    # n_equations = (n_code * d_v) // d_c
+    n_equations = n_equ
 
     block = np.zeros((n_equations // d_v, n_code), dtype=int)
     H = np.empty((n_equations, n_code))
@@ -65,21 +66,25 @@ def parity_check_matrix(n_code, d_v, d_c, seed=None):
             c = circle_check(H_t, block_size, d_c)
         H[i * block_size: (i + 1) * block_size] = H_t         
     H = H.astype(int)
+    
     return H
 
 def circle_check(H_t, block_size, d_c):
     for j in range(block_size):
-        # c_sum = 0
+        c_sum = 0
         H_check = np.sum(H_t[:, j*d_c:(j+1)*d_c], axis=1)
         for k in range(block_size):
             # if (H_check[k] > 2):
             #     return 1
-            # if (H_check[k] == 2):
-            #     c_sum = c_sum +1
-            #     if (c_sum > 1):
-            #         return 1
-            if (H_check[k] > 1):
-                return 1
+            if (H_check[k] == 2):
+                c_sum = c_sum +1
+                if (c_sum > 1):
+                    return 1
+            # if (H_check[k] > 1):
+            #     return 1
     return 0
+
+def rank_cal(H):
+    return np.linalg.matrix_rank(H)
 
 
