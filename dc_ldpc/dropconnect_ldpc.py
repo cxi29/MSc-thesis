@@ -22,42 +22,47 @@ def gen_ldpc (n, m, prob):
     return H
 
 class LDPC_DropConnectDense(Dense):
-    def __init__(self, **kwargs):
-        self.prob = kwargs.pop('prob')
+    def __init__(self, prob, **kwargs):
+        super(LDPC_DropConnectDense, self).__init__(**kwargs)
+        # self.prob = kwargs.pop('prob')
+        self.prob = prob
         if not 0. <= self.prob < 1.:
             raise NameError('prob must be at range [0, 1)]')
-        super(LDPC_DropConnectDense, self).__init__(**kwargs)
 
     def build(self, input_shape): 
         self.in_feature = input_shape[-1]
-
+        # self.w = self.add_weight(
+        #     shape=(self.in_feature, self.units),
+        #     initializer="random_normal",
+        #     trainable=True,
+        #     )
+        # self.b = self.add_weight(
+        #     shape=(self.units, ), 
+        #     initializer="random_normal", 
+        #     trainable=False
+        #     )
         super(LDPC_DropConnectDense, self).build(input_shape)
 
-    def call(self, inputs):
+    def call(self, inputs, training):
         
-        ldpc_mask = gen_ldpc(self.in_feature, self.units, self.prob).T
-        ddmask = tf.cast(ldpc_mask, tf.float32)       
-        self.kernel = K.in_train_phase(tf.multiply(self.kernel, ddmask), self.kernel)        
-        # self.kernel = K.in_train_phase(tf.multiply(self.kernel,
-        #     tf.cast(gen_ldpc(self.units, self.in_feature, self.prob), tf.float32)), self.kernel)
-        # self.bias = K.in_train_phase(tf.multiply(self.bias, mask), self.bias)        
-        output = tf.matmul(inputs, self.kernel)
+        if training is None:
+            training = K.learning_phase()    
+
+        if training is True:
+            self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
+            self.ddmask = tf.cast(self.ddmask, tf.float32)      
+            self.w_masked = tf.multiply(self.kernel, self.ddmask)
+            output = tf.matmul(inputs, self.w_masked)
+        # self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
+        #                                 tf.cast(gen_ldpc(self.in_feature, self.units, self.prob).T, tf.float32)),
+        #                                 self.kernel)   
+        else:
+            output = tf.matmul(inputs, self.kernel)
           
         if self.use_bias:
             output += self.bias
         return self.activation(output)        
-
-        # if self.train:
-        #     ldpc_mask = gen_ldpc(self.units, self.in_feature, self.prob)
-        #     mask = tf.cast(ldpc_mask, tf.float32)
-        #     self.kernel = tf.multiply(self.kernel, mask) * (1-self.prob)
-        #     self.bias = tf.multiply(self.bias, mask) * (1-self.prob)
-        #     output = tf.matmul(inputs, self.kernel)
-        # else:
-        #     output = tf.matmul(inputs, self.kernel) * (1-self.prob)    
-        # if self.use_bias:
-        #     output += self.bias
-        # return self.activation(output)          
+       
         
 
 

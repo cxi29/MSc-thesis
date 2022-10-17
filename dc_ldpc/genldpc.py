@@ -39,8 +39,8 @@ def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
     if d_c <= d_v:
         raise ValueError("""d_c must be greater than d_v.""")
 
-    if n_code % d_c:
-        raise ValueError("""d_c must divide n for a regular LDPC matrix H.""")
+    # if n_code % d_c:
+    #     raise ValueError("""d_c must divide n for a regular LDPC matrix H.""")
 
     # n_equations = (n_code * d_v) // d_c
     n_equations = n_equ
@@ -60,10 +60,10 @@ def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
     # reate remaining blocks by permutations of the first block's columns:
     for i in range(1, d_v):
         H_t = rng.permutation(block.T).T
-        c = circle_check(H_t, block_size, d_c)
-        while (c == 1):
-            H_t = rng.permutation(block.T).T
-            c = circle_check(H_t, block_size, d_c)
+        # c = circle_check(H_t, block_size, d_c)
+        # while (c == 1):
+        #     H_t = rng.permutation(block.T).T
+        #     c = circle_check(H_t, block_size, d_c)
         H[i * block_size: (i + 1) * block_size] = H_t         
     H = H.astype(int)
     
@@ -74,8 +74,8 @@ def circle_check(H_t, block_size, d_c):
         c_sum = 0
         H_check = np.sum(H_t[:, j*d_c:(j+1)*d_c], axis=1)
         for k in range(block_size):
-            # if (H_check[k] > 2):
-            #     return 1
+            if (H_check[k] > 2):
+                return 1
             if (H_check[k] == 2):
                 c_sum = c_sum +1
                 if (c_sum > 1):

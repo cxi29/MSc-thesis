@@ -31,17 +31,17 @@ y0 = Dense(10, activation="softmax")(x0)
 md0 = tf.keras.models.Model(X, y0)
 md0.summary() 
 
-# x1 = LDPC_DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
-# x1 = LDPC_DropConnectDense(units=64, prob=1/4, activation="relu", use_bias=True)(x1)
-# y1 = Dense(10, activation="softmax")(x1)
-# md1 = tf.keras.models.Model(X, y1)
-# md1.summary() 
+x1 = LDPC_DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
+x1 = LDPC_DropConnectDense(units=64, prob=3/4, activation="relu", use_bias=True)(x1)
+y1 = Dense(10, activation="softmax")(x1)
+md1 = tf.keras.models.Model(X, y1)
+md1.summary() 
 
-# x2 = LDPC_DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
-# x2 = LDPC_DropConnectDense(units=64, prob=1/8, activation="relu", use_bias=True)(x2)
-# y2 = Dense(10, activation="softmax")(x2)
-# md2 = tf.keras.models.Model(X, y2)
-# md2.summary()
+x2 = LDPC_DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
+x2 = LDPC_DropConnectDense(units=64, prob=7/8, activation="relu", use_bias=True)(x2)
+y2 = Dense(10, activation="softmax")(x2)
+md2 = tf.keras.models.Model(X, y2)
+md2.summary()
 
 # x3 = LDPC_DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
 # x3 = LDPC_DropConnectDense(units=64, prob=1/16, activation="relu", use_bias=True)(x3)
@@ -61,22 +61,22 @@ md0.summary()
 # md5 = tf.keras.models.Model(X, y5)
 # md5.summary()
 
-# # # Network #2: Test LDPC_DC_Wrapper
-# # #     Use LDPC matrix as DropConnect mask, flatten 2D input directly, no convolutional layers used.
+# # # # Network #2: Test LDPC_DC_Wrapper
+# # # #     Use LDPC matrix as DropConnect mask, flatten 2D input directly, no convolutional layers used.
 
-# # x2 = LDPC_DropConnect(Dense(128, activation='relu'), prob=0.5)(X)
-# # x2 = LDPC_DropConnect(Dense(64, activation='relu'), prob=0.5)(x2)
-# # y2 = Dense(10, activation="softmax")(x2)
-# # md2= tf.keras.models.Model(X, y2)
-# # md2.summary()
+# # # x2 = LDPC_DropConnect(Dense(128, activation='relu'), prob=0.5)(X)
+# # # x2 = LDPC_DropConnect(Dense(64, activation='relu'), prob=0.5)(x2)
+# # # y2 = Dense(10, activation="softmax")(x2)
+# # # md2= tf.keras.models.Model(X, y2)
+# # # md2.summary()
 
 
-# #Network 3:Fully connected network with two similiar hidden dense layers.
-# x6 = Dense(128, activation='relu')(X)
-# x6 = Dense(64, activation='relu')(x6)
-# y6 = Dense(10, activation="softmax")(x6)
-# md6= tf.keras.models.Model(X, y6)
-# md6.summary()
+#Network 3:Fully connected network with two similiar hidden dense layers.
+x6 = Dense(128, activation='relu')(X)
+x6 = Dense(64, activation='relu')(x6)
+y6 = Dense(10, activation="softmax")(x6)
+md6= tf.keras.models.Model(X, y6)
+md6.summary()
 
 # # Network 4 - Original DropConnect
 # x7 = DropConnectDense(units=128, prob=0.5, activation="relu", use_bias=True)(X)
@@ -86,13 +86,13 @@ md0.summary()
 # md7.summary()
 
 # models = [md0, md1, md2, md3, md4, md5, md6, md7]
-models = [md0]
+models = [md0, md1, md2,md6]
 
 """ Compile and evaluate models """
 histories = []
 test_results = []
 # Apply Early Stopping
-callback = tf.keras.callbacks.EarlyStopping(min_delta = 0.0001, patience = 10)
+callback = tf.keras.callbacks.EarlyStopping(min_delta = 0.0001, patience = 5)
 
 for md in models:
     md.compile(
@@ -107,7 +107,7 @@ for md in models:
         y_train,
         batch_size=64,
         validation_split=0.1,
-        epochs=50,
+        epochs=100,
         callbacks=[callback]
         )
     histories.append(history)
@@ -123,7 +123,8 @@ for md in models:
     print('Test loss = {0}, Test acc: {1}'.format(results[0], results[1]))
     test_results.append(results)
 
-with open('results.txt', 'w') as f:
+result_path = 'result_%d.txt' %(int(time.time()))
+with open(result_path, 'w') as f:
     for line in test_results:
         f.write(f"{line}\n")
 
@@ -161,11 +162,11 @@ def results_plot(histories):
         # plt.tight_layout()
         # plt.savefig(figsave_path + '\\diagnostics_model_%d_%d.png' %(i, int(time.time())))
         # plt.savefig(figsave_path + '\\diagnostics_model_0_%d_%d.png' %(i, int(time.time())))
-        if (i < 6):
+        if (i < 3):
             plt.suptitle('Test results of model #1 with config. %d' %(i+1))
             plt.savefig(figsave_path + '\\diagnostics_model_0_%d_%d.png' %(i, int(time.time())))
         else:
-            plt.suptitle('Test results of model #%d' %(i-3))
+            plt.suptitle('Test results of model #%d' %i)
             plt.savefig(figsave_path + '\\diagnostics_model_%d_%d.png' %(i-3, int(time.time())))            
         plt.close(fig)
 
