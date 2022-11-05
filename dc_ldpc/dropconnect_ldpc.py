@@ -43,14 +43,14 @@ class LDPC_DropConnectDense(Dense):
         #     )
         super(LDPC_DropConnectDense, self).build(input_shape)
 
-    def call(self, inputs, training):
+    def call(self, inputs, training=False):
         
         if training is None:
             training = K.learning_phase()    
 
         if training is True:
             self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
-            self.ddmask = tf.cast(self.ddmask, tf.float32)      
+            # self.ddmask = tf.cast(self.ddmask, tf.float32)      
             self.w_masked = tf.multiply(self.kernel, self.ddmask)
             output = tf.matmul(inputs, self.w_masked)
         # self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
