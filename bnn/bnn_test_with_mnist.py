@@ -191,10 +191,10 @@ def create_model():
           kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.relu),
       tf.keras.layers.Flatten(),
-      tfp.layers.DenseFlipout(
-          84, kernel_divergence_fn=kl_divergence_function,
-          activation=tf.nn.relu),
-      # LDPC_DropConnectDense(units=84, prob=0.5, activation="relu", name='LDPC_flipout'),
+      # tfp.layers.DenseFlipout(
+      #     84, kernel_divergence_fn=kl_divergence_function,
+      #     activation=tf.nn.relu),
+      LDPC_DropConnect_Flipout(units=84, prob=0.5, activation="relu", name='LDPC_flipout'),
       tfp.layers.DenseFlipout(
           NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.softmax)
@@ -326,13 +326,13 @@ def main(argv):
         probs = tf.stack([model.predict(test_seq, verbose=1)
                           for _ in range(FLAGS.num_monte_carlo)], axis=0)
         mean_probs = tf.reduce_mean(probs, axis=0)
-        neg_log_loss = tf.reduce_mean(tf.math.log(mean_probs))
+        log_loss = tf.reduce_mean(tf.math.log(mean_probs))
 
         l2_loss = tf.reduce_sum(FLAGS.lmbda * tf.stack([tf.nn.l2_loss(v) for v in tf.compat.v1.get_collection('weights')]))
         
-        elbo = -neg_log_loss + l2_loss
+        neg_elbo = log_loss + l2_loss
 
-        print(' ... ELBO: {:.3f}'.format(elbo))
+        print(' ... Negative ELBO: {:.3f}'.format(neg_elbo))
 
         if HAS_SEABORN:
           names = [layer.name for layer in model.layers
@@ -354,7 +354,7 @@ def main(argv):
                                       'epoch{}_step{}_pred.png'.format(
                                           epoch, step)),
                                   title='mean heldout logprob {:.2f}'
-                                  .format(neg_log_loss))
+                                  .format(log_loss))
 
 
 if __name__ == '__main__':
