@@ -20,11 +20,11 @@ def gen_ldpc (n, m, prob):
     """ 
     :param n: Nr. of columns in ldpc matrix (input features in neural network).
     :param m: Nr. of rows in ldpc matrix, m = n - k (output units in neural network).
-    :param prob: Dropout probability p.
+    :param prob: NOT dropping probability p.
     """
     # seed = np.random.RandomState(826)
-    dv = int((1-prob) * m)
-    dc = int((1-prob) * n)
+    dv = int(prob* m)
+    dc = int(prob * n)
     # H = make_ldpc(n, dv, dc, seed=seed, sparse=True)
     H = parity_check_matrix(n, m, dv, dc)
     return H
@@ -51,21 +51,22 @@ class LDPC_DropConnectDense(Dense):
         #     )
         super(LDPC_DropConnectDense, self).build(input_shape)
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training):
         
         if training is None:
             training = K.learning_phase()    
 
-        if training is True:
-            self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
-            self.ddmask = tf.cast(self.ddmask, tf.float32)      
-            self.w_masked = tf.multiply(self.kernel, self.ddmask)
-            output = tf.matmul(inputs, self.w_masked)
-        # self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
-        #                                 tf.cast(gen_ldpc(self.in_feature, self.units, self.prob).T, tf.float32)),
-        #                                 self.kernel)   
-        else:
-            output = tf.matmul(inputs, self.kernel)
+        # if training is True:
+        #     self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
+        #     self.ddmask = tf.cast(self.ddmask, tf.float32)      
+        #     self.w_masked = tf.multiply(self.kernel, self.ddmask)
+        #     output = tf.matmul(inputs, self.w_masked)
+        self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
+                                        tf.cast(gen_ldpc(self.in_feature, self.units, self.prob).T, tf.float32)),
+                                        self.kernel)   
+        # else:
+        #     output = tf.matmul(inputs, self.kernel)
+        output = tf.matmul(inputs, self.kernel)
           
         if self.use_bias:
             output += self.bias
@@ -135,7 +136,7 @@ class LDPC_DropConnect_Flipout(Dense):
             training = K.learning_phase()    
 
         inputs = tf.convert_to_tensor(value=inputs, dtype=self.dtype)
-        if training is True:
+        if training:
             self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
             self.ddmask = tf.cast(self.ddmask, tf.float32)
             # self.w_masked = tf.multiply(self.kernel, self.ddmask)
@@ -186,7 +187,7 @@ class LDPC_DropConnect_Flipout(Dense):
         input_shape = tf.shape(inputs)
         batch_shape = input_shape[:-1]
 
-        seed_stream = SeedStream(self.seed, salt='DenseFlipout')
+        seed_stream = SeedStream(self.seed, salt='LDPC_DropConnect_Flipout')
 
         sign_input = tfp_random.rademacher(
             input_shape,
@@ -204,7 +205,9 @@ class LDPC_DropConnect_Flipout(Dense):
         #     self.kernel_posterior.distribution.loc = tf.multiply(
         #                                             self.kernel_posterior.distribution.loc,
         #                                             self.ddmask)
-        outputs = tf.matmul(inputs, self.kernel_posterior.distribution.loc)
+        # outputs = tf.matmul(inputs, self.kernel_posterior.distribution.loc)
+
+        outputs = tf.matmul(inputs, self.kernel_posterior_affine_tensor)
         
         outputs += perturbed_inputs
         return outputs

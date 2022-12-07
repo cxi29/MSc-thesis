@@ -58,7 +58,7 @@ flags.DEFINE_float('learning_rate',
                    default=0.001,
                    help='Initial learning rate.')
 flags.DEFINE_integer('num_epochs',
-                     default=10,
+                     default=2,
                      help='Number of training steps to run.')
 flags.DEFINE_integer('batch_size',
                      default=128,
@@ -76,7 +76,7 @@ flags.DEFINE_integer('viz_steps',
                      default=400,
                      help='Frequency at which save visualizations.')
 flags.DEFINE_integer('num_monte_carlo',
-                     default=50,
+                     default=5,
                      help='Network draws to compute predictive probabilities.')
 flags.DEFINE_bool('fake_data',
                   default=False,
@@ -173,28 +173,31 @@ def create_model():
   # stochastic gradients than naive reparameterization.
   model = tf.keras.models.Sequential([
       tfp.layers.Convolution2DFlipout(
-          6, kernel_size=5, padding='SAME',
+          32, kernel_size=3, padding='SAME',
           kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.relu),
       tf.keras.layers.MaxPooling2D(
           pool_size=[2, 2], strides=[2, 2],
           padding='SAME'),
       tfp.layers.Convolution2DFlipout(
-          16, kernel_size=5, padding='SAME',
+          64, kernel_size=3, padding='SAME',
           kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.relu),
       tf.keras.layers.MaxPooling2D(
           pool_size=[2, 2], strides=[2, 2],
           padding='SAME'),
-      tfp.layers.Convolution2DFlipout(
-          120, kernel_size=5, padding='SAME',
-          kernel_divergence_fn=kl_divergence_function,
-          activation=tf.nn.relu),
-      tf.keras.layers.Flatten(),
-      # tfp.layers.DenseFlipout(
-      #     84, kernel_divergence_fn=kl_divergence_function,
+      # tfp.layers.Convolution2DFlipout(
+      #     120, kernel_size=5, padding='SAME',
+      #     kernel_divergence_fn=kl_divergence_function,
       #     activation=tf.nn.relu),
-      LDPC_DropConnect_Flipout(units=84, prob=0.5, activation="relu", name='LDPC_flipout'),
+      tf.keras.layers.Flatten(),
+      tfp.layers.DenseFlipout(
+          128, kernel_divergence_fn=kl_divergence_function,
+          activation=tf.nn.relu),
+      LDPC_DropConnect_Flipout(
+          units=64, prob=0.8, 
+          kernel_divergence_fn=kl_divergence_function, 
+          activation="relu", name='LDPC_flipout'),
       tfp.layers.DenseFlipout(
           NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.softmax)
@@ -318,6 +321,7 @@ def main(argv):
                   tf.reduce_mean(epoch_accuracy)))
 
       if (step+1) % FLAGS.viz_steps == 0:   # viz_step=400, this reaches last few steps in one epoch.
+        # 60000 / 128 = 468.75, launch monte carlo at the (almost) end of an epoch.
         # Compute log prob of heldout set by averaging draws from the model:
         # p(heldout | train) = int_model p(heldout|model) p(model|train)
         #                   ~= 1/n * sum_{i=1}^n p(heldout | model_i)

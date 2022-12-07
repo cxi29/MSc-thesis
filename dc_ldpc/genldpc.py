@@ -42,7 +42,7 @@ def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
     # if n_code % d_c:
     #     raise ValueError("""d_c must divide n for a regular LDPC matrix H.""")
 
-    # n_equations = (n_code * d_v) // d_c
+    n_equations = (n_code * d_v) // d_c
     n_equations = n_equ
 
     block = np.zeros((n_equations // d_v, n_code), dtype=int)

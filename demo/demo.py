@@ -2,11 +2,11 @@ import numpy as np
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, Input, ReLU, BatchNormalization, Flatten, MaxPool2D
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, Input, BatchNormalization, Flatten, MaxPool2D
 import tensorflow.keras.backend as K
 
 from dc_ldpc.dropconnect_ldpc import *
-from dropconnect.DClayers_tf import *
+# from dropconnect.DClayers_tf import *
 
 import os
 abs_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,8 +14,11 @@ import time
 
 from matplotlib import pyplot as plt
 
-# Load MNIST dataset as NumPy arrays
+""" Load dataset as NumPy arrays """
+# MNIST
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+# CIFAR-10
+# (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
 # Preprocess the data
 # x_train = x_train.reshape(-1, 784).astype('float32') / 255
@@ -91,14 +94,15 @@ x_test = x_test.reshape(-1, 28, 28, 1).astype('float32') / 255
 # models = [md0, md1, md2, md3, md4, md5, md6, md7]
 # models = [md0, md1, md2,md6]
 
-model = Sequential(name="Model1_Config1")
+model = Sequential(name="Model1_Config0")
 model.add(Conv2D(32, (3, 3), activation='relu'))
-model.add(MaxPool2D((2, 2)))
+model.add(MaxPool2D((2, 2), strides=2))
+model.add(Conv2D(64, (3,3), activation='relu'))
+model.add(MaxPool2D((2, 2), strides=2))
 model.add(Flatten())
-model.add(LDPC_DropConnectDense(units=128, prob=0.5, activation="relu"))
-# model.add(Dense(units=128, activation="relu"))
+model.add(Dense(units=128, activation="relu"))
+model.add(LDPC_DropConnectDense(units=32, prob=0.5, activation="relu"))
 model.add(Dense(units=10, activation="softmax"))
-
 
 
 """ Compile and evaluate models """
@@ -139,11 +143,11 @@ model.compile(
 history = model.fit(
     x_train, y_train, 
     batch_size=batch_size, 
-    epochs=epochs, 
+    epochs=1, 
     validation_split=0.1,
     callbacks=[callback]
     )
-histories.append(history)
+# histories.append(history)
 model.summary() 
 
     # # Save the models
@@ -162,42 +166,42 @@ model.summary()
 #     for line in test_results:
 #         f.write(f"{line}\n")
 
-results = model.evaluate(x_test, y_test, batch_size=64, verbose=1)
-print('Test loss = {0}, Test acc: {1}'.format(results[0], results[1]))
-test_results.append(results)
+# results = model.evaluate(x_test, y_test, batch_size=64, verbose=1)
+# print('Test loss = {0}, Test acc: {1}'.format(results[0], results[1]))
+# test_results.append(results)
 
 result_path = 'result_{0}{1}.txt'.format(time.localtime().tm_mon, time.localtime().tm_mday)
-with open(result_path, 'a+') as f:
-    f.write("Evaluation results of %s: \n" %(model.name))
-    for line in test_results:
-        f.write(f"{line}\n\n")
+# with open(result_path, 'a+') as f:
+    # f.write("Evaluation results of %s: \n" %(model.name))
+    # for line in test_results:
+    #     f.write(f"{line}\n\n")
 
 
 """ Make some plots """
 figsave_path = os.path.join(abs_path, 'plottings')
 
-def results_plot(histories):
-    """ 
-    :param history: history attribute after model training
-    """
-    for i in range(len(histories)):
-        fig = plt.figure()
-		# plot loss
-        # plt.subplot(2, 1, 1)
-        # plt.title('Cross Entropy Loss')
-        epochs:int = range(1, len(histories[i].history['loss']) + 1)
-        plt.xlabel('Epochs')
-        # plt.ylabel('Cross Entropy Loss')
-        plt.yticks(np.arange(0.0, 1.0, 0.05))
-        plt.ylim(0.0, 1.0)
-        plt.plot(histories[i].history['loss'], color='magenta')
-        plt.plot(histories[i].history['val_loss'], color='blue')
-        plt.plot(histories[i].history['accuracy'], color='orange', label='train')
-        plt.plot(histories[i].history['val_accuracy'], color='green', label='test')
-        plt.grid(True)
-        plt.legend(['loss', 'val_loss', 'accuracy', 'val_accuracy'])
-        plt.suptitle('Training results of model #1 with config. #1')
-        plt.savefig(figsave_path + '\\diagnostics_{0}{1}_{2}.png'.format(time.localtime().tm_mon, time.localtime().tm_mday, int(time.time())))            
+# def results_plot(histories):
+    # """ 
+    # :param history: history attribute after model training
+    # """
+    # for i in range(len(histories)):
+    #     fig = plt.figure()
+	# 	# plot loss
+    #     # plt.subplot(2, 1, 1)
+    #     # plt.title('Cross Entropy Loss')
+    #     epochs:int = range(1, len(histories[i].history['loss']) + 1)
+    #     plt.xlabel('Epochs')
+    #     # plt.ylabel('Cross Entropy Loss')
+    #     plt.yticks(np.arange(0.0, 1.0, 0.05))
+    #     plt.ylim(0.0, 1.0)
+    #     plt.plot(histories[i].history['loss'], color='magenta')
+    #     plt.plot(histories[i].history['val_loss'], color='blue')
+    #     plt.plot(histories[i].history['accuracy'], color='orange', label='train')
+    #     plt.plot(histories[i].history['val_accuracy'], color='green', label='test')
+    #     plt.grid(True)
+    #     plt.legend(['loss', 'val_loss', 'accuracy', 'val_accuracy'])
+    #     plt.suptitle('Training results of model #1 with config. #1')
+    #     plt.savefig(figsave_path + '\\diagnostics_{0}{1}_{2}.png'.format(time.localtime().tm_mon, time.localtime().tm_mday, int(time.time())))            
         # # plot accuracy
         # plt.cla()
         # plt.suptitle('Training results of model #1 with config. #1')
@@ -210,7 +214,7 @@ def results_plot(histories):
         # plt.plot(histories[i].history['val_accuracy'], color='orange', label='test')
         # plt.grid(True)
         # plt.savefig(figsave_path + '\\accuracy_{0}{1}_{2}.png'.format(time.localtime().tm_mon, time.localtime().tm_mday, int(time.time())))            
-        plt.close(fig)
+        # plt.close(fig)
 
         # plt.suptitle('Test results of model %d' %(i))
         # plt.suptitle('Test results of model 0')
@@ -225,8 +229,8 @@ def results_plot(histories):
         #     plt.savefig(figsave_path + '\\diagnostics_model_%d_%d.png' %(i-3, int(time.time())))            
         # plt.close(fig)
 
-print('Plot the fitting results...')
-results_plot(histories)
+# print('Plot the fitting results...')
+# results_plot(histories)
 
 """ Monitor norm of weights in each layers during training """
 from tensorflow.keras.callbacks import Callback
@@ -244,27 +248,30 @@ class WeightCapture(Callback):
         for layer in model.layers:
             if not layer.weights:
                 continue
-            name = layer.weights[0].name.split("/")[0]
-            weight[name] = layer.weights[0].numpy()
+            name = layer.weights[0].name.split("/")[1]
+            # weight[name] = layer.weights[0].numpy()
+            weight[name] = layer.get_weights()[0]   # layer.get_weights()[0] returns the kernel, layer.get_weights()[1] returns the bias, dtype=np.ndarray
         self.weights.append(weight)
 
 def plotweight(capture_cb):
     "Plot the weights' mean and s.d. across epochs"
     _, ax = plt.subplots(2, 1, sharex=True, constrained_layout=True)
     ax[0].set_title("Mean of weights")
-    plt.xlabel('Epochs')
-    for key in capture_cb.weights[0]:   # 'key' is Nr. of epoch
-        ax[0].plot(capture_cb.epochs, [w[key].mean() for w in capture_cb.weights], label=key)
-    ax[0].legend()
     ax[1].set_title("Standard Deviation")
-    for key in capture_cb.weights[0]:
-        ax[1].plot(capture_cb.epochs, [w[key].std() for w in capture_cb.weights], label=key)
     plt.xlabel('Epochs')
+    # weight = []
+    # for epoch in capture_cb.epochs:
+    for key in capture_cb.weights[0]:   # 'key' is the name of layer
+        # weight[key].append(w[epoch][key].mean() for w in capture_cb.weights)
+        ax[0].plot(capture_cb.epochs, [w[key].mean() for w in capture_cb.weights], label=key)
+        ax[1].plot(capture_cb.epochs, [w[key].std() for w in capture_cb.weights], label=key)
+    ax[0].legend()
     ax[1].legend()
+    plt.xlabel('Epochs')
     plt.show()
 
 
-capture_cb = WeightCapture()
+# capture_cb = WeightCapture()
 
 model.compile(
     optimizer=tf.keras.optimizers.Adam(0.0001),
@@ -272,10 +279,12 @@ model.compile(
     metrics=['accuracy']        
     )
 
-model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.1, callbacks=[capture_cb])
+
+model.fit(x_train, y_train, batch_size=batch_size, epochs=1, validation_split=0.1, callbacks=[capture_cb])
+
 model.evaluate(x_test, y_test, batch_size=32)
 
-plotweight(capture_cb)
+# plotweight(capture_cb)
 
 
 """ Monitor norm of gradients in each layers during training """
