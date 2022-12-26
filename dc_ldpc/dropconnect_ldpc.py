@@ -9,10 +9,11 @@ from tensorflow.keras.layers import ReLU, BatchNormalization, Flatten, MaxPool2D
 
 from tensorflow_probability.python import random as tfp_random
 from tensorflow_probability.python.distributions import independent as independent_lib
-from tensorflow_probability.python.distributions import kullback_leibler as kl_lib
+from tensorflow_probability.python.distributions import kullback_leibler as kl
 from tensorflow_probability.python.distributions import normal as normal_lib
 from tensorflow_probability.python.layers import util as tfp_layers_util
 from tensorflow_probability.python.util import SeedStream
+from tensorflow_probability.python.layers.dense_variational import _DenseVariational as Densevar
 
 from dc_ldpc.genldpc import parity_check_matrix
 
@@ -56,17 +57,18 @@ class LDPC_DropConnectDense(Dense):
         if training is None:
             training = K.learning_phase()    
 
-        # if training is True:
-        #     self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
-        #     self.ddmask = tf.cast(self.ddmask, tf.float32)      
-        #     self.w_masked = tf.multiply(self.kernel, self.ddmask)
-        #     output = tf.matmul(inputs, self.w_masked)
-        self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
-                                        tf.cast(gen_ldpc(self.in_feature, self.units, self.prob).T, tf.float32)),
-                                        self.kernel)   
-        # else:
-        #     output = tf.matmul(inputs, self.kernel)
-        output = tf.matmul(inputs, self.kernel)
+        if training is True:
+            self.ddmask = gen_ldpc(self.in_feature, self.units, self.prob).T
+            self.ddmask = tf.cast(self.ddmask, tf.float32)      
+            self.w_masked = tf.multiply(self.kernel, self.ddmask)
+            output = tf.matmul(inputs, self.w_masked)
+        else:
+            output = tf.matmul(inputs, self.kernel)
+        # self.kernel = K.in_train_phase(tf.multiply(self.kernel, 
+        #                                 tf.cast(gen_ldpc(self.in_feature, self.units, self.prob).T, tf.float32)),
+        #                                 self.kernel)   
+        # output = tf.matmul(inputs, self.kernel)
+
           
         if self.use_bias:
             output += self.bias
@@ -76,25 +78,32 @@ class LDPC_DropConnectDense(Dense):
 
 
 
-class LDPC_DropConnect_Flipout(Dense):
+class LDPC_DropConnect_Flipout(Densevar):
     def __init__(self, prob, units, seed=None,
+                activity_regularizer=None,
                 kernel_posterior_fn=tfp_layers_util.default_mean_field_normal_fn(),
                 kernel_posterior_tensor_fn=lambda d: d.sample(),
                 kernel_prior_fn=tfp_layers_util.default_multivariate_normal_fn,
-                kernel_divergence_fn=lambda q, p, ignore: kl_lib.kl_divergence(q, p),
+                kernel_divergence_fn=lambda q, p, ignore: kl.kl_divergence(q, p),
                 **kwargs):
-        super(LDPC_DropConnect_Flipout, self).__init__(units, **kwargs)
-        # self.prob = kwargs.pop('prob')
+        super(LDPC_DropConnect_Flipout, self).__init__(
+                                                units=units,
+                                                activity_regularizer=activity_regularizer,
+                                                kernel_posterior_fn = kernel_posterior_fn,
+                                                kernel_posterior_tensor_fn = kernel_posterior_tensor_fn,
+                                                kernel_prior_fn = kernel_prior_fn,
+                                                kernel_divergence_fn = kernel_divergence_fn,
+                                                **kwargs)
         self.prob = prob
-        self.units = units
-        self.kernel_posterior_fn = kernel_posterior_fn
-        self.kernel_posterior_tensor_fn = kernel_posterior_tensor_fn
-        self.kernel_prior_fn = kernel_prior_fn
-        self.kernel_divergence_fn = kernel_divergence_fn
+        # self.units = units
+        # self.kernel_posterior_fn = kernel_posterior_fn
+        # self.kernel_posterior_tensor_fn = kernel_posterior_tensor_fn
+        # self.kernel_prior_fn = kernel_prior_fn
+        # self.kernel_divergence_fn = kernel_divergence_fn
         self.seed = seed
 
-        if not 0. <= self.prob < 1.:
-            raise NameError('prob must be at range [0, 1)]')
+        # if not 0. <= self.prob < 1.:
+        #     raise NameError('prob must be at range [0, 1)]')
 
     def build(self, input_shape): 
         
@@ -128,7 +137,7 @@ class LDPC_DropConnect_Flipout(Dense):
 
         self.built = True
 
-        super(LDPC_DropConnect_Flipout, self).build(input_shape)
+        # super(LDPC_DropConnect_Flipout, self).build(input_shape)
 
     def call(self, inputs, training=False):
         
@@ -168,7 +177,7 @@ class LDPC_DropConnect_Flipout(Dense):
         if (not isinstance(self.kernel_posterior, independent_lib.Independent) or
             not isinstance(self.kernel_posterior.distribution, normal_lib.Normal)):
             raise TypeError(
-            '`DenseFlipout` requires '
+            '`LDPC_DropConnect_Flipout` requires '
             '`kernel_posterior_fn` produce an instance of '
             '`tfd.Independent(tfd.Normal)` '
             '(saw: \"{}\").'.format(self.kernel_posterior.name)
@@ -205,9 +214,9 @@ class LDPC_DropConnect_Flipout(Dense):
         #     self.kernel_posterior.distribution.loc = tf.multiply(
         #                                             self.kernel_posterior.distribution.loc,
         #                                             self.ddmask)
-        # outputs = tf.matmul(inputs, self.kernel_posterior.distribution.loc)
+        outputs = tf.matmul(inputs, self.kernel_posterior.distribution.loc)
 
-        outputs = tf.matmul(inputs, self.kernel_posterior_affine_tensor)
+        # outputs = tf.matmul(inputs, self.kernel_posterior_affine_tensor)
         
         outputs += perturbed_inputs
         return outputs
@@ -221,5 +230,20 @@ class LDPC_DropConnect_Flipout(Dense):
             divergence_fn(posterior, prior, posterior_tensor),
                 name=name)
         self.add_loss(divergence)
+
+    def get_config(self):
+        """Returns the config of the layer.
+        A layer config is a Python dictionary (serializable) containing the
+        configuration of a layer. The same layer can be reinstantiated later
+        (without its trained weights) from this configuration.
+        Returns:
+        config: A Python dictionary of class keyword arguments and their
+            serialized values.
+        """
+        config = {
+            'seed': self.seed,
+        }
+        base_config = super(LDPC_DropConnect_Flipout, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))    
 
 

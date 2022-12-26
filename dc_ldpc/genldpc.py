@@ -1,5 +1,5 @@
 # import numpy as np
-# from pyldpc import make_ldpc, parity_check_matrix
+from pyldpc import coding_matrix_systematic
 
 # def gen_ldpc (n, m, prob):
 #     """ 
@@ -26,7 +26,7 @@ import numpy as np
 from pyldpc import utils
 
 
-def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
+def parity_check_matrix(n_code, n_equ, d_v, d_c, systematic=False, sparse=True, seed=None):
     """
     Inherited from pyldpc/code.py
 
@@ -66,7 +66,8 @@ def parity_check_matrix(n_code, n_equ, d_v, d_c, seed=None):
         #     c = circle_check(H_t, block_size, d_c)
         H[i * block_size: (i + 1) * block_size] = H_t         
     H = H.astype(int)
-    
+    if systematic:
+        H, _ = coding_matrix_systematic(H, sparse=sparse)    
     return H
 
 def circle_check(H_t, block_size, d_c):
@@ -87,4 +88,34 @@ def circle_check(H_t, block_size, d_c):
 def rank_cal(H):
     return np.linalg.matrix_rank(H)
 
+import matplotlib.pyplot as plt
+
+def plotmat(H, idx):
+    plt.matshow(H, fignum=idx, cmap=plt.cm.gray_r)
+
+""" Generate random matrix for comparison """
+def rand_bin_mat(K, N, p):   # p=K/N
+    arr = np.zeros(N * K)
+    n_ones = int(N*K*p)
+    arr[:n_ones]  = 1
+    np.random.shuffle(arr)
+    rbmat = np.reshape(arr,(K,N))
+    return rbmat
+
+if __name__ == '__main__':
+    n = 128
+    m = 64    
+    # plt.figure()
+    p = [1/8, 1/4, 1/2]
+    for i in range(3):
+        pi = p[i]
+        dv = int(pi*m)
+        dc = int(pi*n)
+        H = parity_check_matrix(n,m,dv,dc,systematic=True)
+        M = rand_bin_mat(m,n,pi)
+        plt.subplot(2,3,i+1)
+        plotmat(H,False)
+        plt.subplot(2,3,i+4)
+        plotmat(M,False)
+    plt.show()
 
