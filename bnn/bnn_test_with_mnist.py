@@ -58,7 +58,7 @@ flags.DEFINE_float('learning_rate',
                    default=0.001,
                    help='Initial learning rate.')
 flags.DEFINE_integer('num_epochs',
-                     default=2,
+                     default=51,
                      help='Number of training steps to run.')
 flags.DEFINE_integer('batch_size',
                      default=128,
@@ -66,17 +66,19 @@ flags.DEFINE_integer('batch_size',
 flags.DEFINE_string('data_dir',
                     default=os.path.join(os.getenv('TEST_TMPDIR', '/tmp'),
                                          'bayesian_neural_network/data'),
-                    help='Directory where data is stored (if using real data).')
-flags.DEFINE_string(
-    'model_dir',
-    default=os.path.join(os.getenv('TEST_TMPDIR', '/tmp'),
-                         'bayesian_neural_network/'),
-    help="Directory to put the model's fit.")
+                    help='Directory where data is stored (if using real data).')                 
+flags.DEFINE_string('model_dir',
+                    default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                        'plottings/bayesian_neural_network/'),
+                    help="Directory to put the model's fit.")
+flags.DEFINE_string('rec_dir',
+                    default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                    help="Directory to save the elbos.")
 flags.DEFINE_integer('viz_steps',
                      default=400,
                      help='Frequency at which save visualizations.')
 flags.DEFINE_integer('num_monte_carlo',
-                     default=5,
+                     default=50,
                      help='Network draws to compute predictive probabilities.')
 flags.DEFINE_bool('fake_data',
                   default=False,
@@ -87,10 +89,11 @@ flags.DEFINE_float('lmbda',
 FLAGS = flags.FLAGS
 
 
-def plot_weight_posteriors(names, qm_vals, qs_vals, fname):
+def plot_weight_posteriors(model_nm, laynames, qm_vals, qs_vals, fname):
   """Save a PNG plot with histograms of weight means and stddevs.
   Args:
-    names: A Python `iterable` of `str` variable names.
+    model_nm: Name of the model.
+    laynames: A Python `iterable` of `str` variable names. Names of layers.
       qm_vals: A Python `iterable`, the same length as `names`,
       whose elements are Numpy `array`s, of any shape, containing
       posterior means of weight varibles.
@@ -103,16 +106,16 @@ def plot_weight_posteriors(names, qm_vals, qs_vals, fname):
   canvas = backend_agg.FigureCanvasAgg(fig)
 
   ax = fig.add_subplot(1, 2, 1)
-  for n, qm in zip(names, qm_vals):
+  for n, qm in zip(laynames, qm_vals):
     sns.distplot(qm.reshape([-1]), ax=ax, label=n)
-  ax.set_title('weight means')
+  ax.set_title('Weight Means in {0}'.format(model_nm))
   ax.set_xlim([-1.5, 1.5])
   ax.legend(loc='upper left')
 
   ax = fig.add_subplot(1, 2, 2)
-  for n, qs in zip(names, qs_vals):
+  for n, qs in zip(laynames, qs_vals):
     sns.distplot(qs.reshape([-1]), ax=ax)
-  ax.set_title('weight stddevs')
+  ax.set_title('Weight Stddevs in {}'.format(model_nm))
   ax.set_xlim([0, 1.])
 
   fig.tight_layout()
@@ -143,14 +146,14 @@ def plot_heldout_prediction(input_vals, probs,
     for prob_sample in probs:
       sns.barplot(x=np.arange(10), y=prob_sample[i, :], alpha=0.1, ax=ax)
       ax.set_ylim([0, 1])
-    ax.set_title('posterior samples')
+    ax.set_title('posterior samples', fontsize=10)
 
     ax = fig.add_subplot(n, 3, 3*i + 3)
     sns.barplot(x=np.arange(10), y=np.mean(probs[:, i, :], axis=0), ax=ax)
     ax.set_ylim([0, 1])
-    ax.set_title('predictive probs')
+    ax.set_title('predictive probs', fontsize=10)
   fig.suptitle(title)
-  fig.tight_layout()
+  fig.tight_layout(rect=[0, 0, 1, 0.985])
 
   canvas.print_figure(fname, format='png')
   print('saved {}'.format(fname))
@@ -171,7 +174,7 @@ def create_model():
   # and two fully connected dense layers. We use the Flipout
   # Monte Carlo estimator for these layers, which enables lower variance
   # stochastic gradients than naive reparameterization.
-  model = tf.keras.models.Sequential([
+  model30 = tf.keras.models.Sequential([
       tfp.layers.Convolution2DFlipout(
           32, kernel_size=3, padding='SAME',
           kernel_divergence_fn=kl_divergence_function,
@@ -186,23 +189,103 @@ def create_model():
       tf.keras.layers.MaxPooling2D(
           pool_size=[2, 2], strides=[2, 2],
           padding='SAME'),
-      # tfp.layers.Convolution2DFlipout(
-      #     120, kernel_size=5, padding='SAME',
-      #     kernel_divergence_fn=kl_divergence_function,
-      #     activation=tf.nn.relu),
       tf.keras.layers.Flatten(),
       tfp.layers.DenseFlipout(
           128, kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.relu),
       LDPC_DropConnect_Flipout(
-          units=64, prob=0.8, 
+          units=64, prob=0.5, 
           kernel_divergence_fn=kl_divergence_function, 
           activation="relu", name='LDPC_flipout'),
       tfp.layers.DenseFlipout(
           NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
           activation=tf.nn.softmax)
-  ])
+  ], name = "Model3_Config0")
 
+  # model31 = tf.keras.models.Sequential([
+  #     tfp.layers.Convolution2DFlipout(
+  #         32, kernel_size=3, padding='SAME',
+  #         kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tf.keras.layers.MaxPooling2D(
+  #         pool_size=[2, 2], strides=[2, 2],
+  #         padding='SAME'),
+  #     tfp.layers.Convolution2DFlipout(
+  #         64, kernel_size=3, padding='SAME',
+  #         kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tf.keras.layers.MaxPooling2D(
+  #         pool_size=[2, 2], strides=[2, 2],
+  #         padding='SAME'),
+  #     tf.keras.layers.Flatten(),
+  #     tfp.layers.DenseFlipout(
+  #         128, kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     LDPC_DropConnect_Flipout(
+  #         units=64, prob=1.0, 
+  #         kernel_divergence_fn=kl_divergence_function, 
+  #         activation="relu", name='LDPC_flipout'),
+  #     tfp.layers.DenseFlipout(
+  #         NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.softmax)
+  # ], name = "Model3_Config1")
+  
+  # model32 = tf.keras.models.Sequential([
+  #     tfp.layers.Convolution2DFlipout(
+  #         32, kernel_size=3, padding='SAME',
+  #         kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tf.keras.layers.MaxPooling2D(
+  #         pool_size=[2, 2], strides=[2, 2],
+  #         padding='SAME'),
+  #     tfp.layers.Convolution2DFlipout(
+  #         64, kernel_size=3, padding='SAME',
+  #         kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tf.keras.layers.MaxPooling2D(
+  #         pool_size=[2, 2], strides=[2, 2],
+  #         padding='SAME'),
+  #     tf.keras.layers.Flatten(),
+  #     tfp.layers.DenseFlipout(
+  #         128, kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tfp.layers.DenseFlipout(
+  #         64, kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.relu),
+  #     tfp.layers.DenseFlipout(
+  #         NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
+  #         activation=tf.nn.softmax)
+  # ], name = "Model3_Config2")
+
+  model33 = tf.keras.models.Sequential([
+      tfp.layers.Convolution2DFlipout(
+          32, kernel_size=3, padding='SAME',
+          kernel_divergence_fn=kl_divergence_function,
+          activation=tf.nn.relu),
+      tf.keras.layers.MaxPooling2D(
+          pool_size=[2, 2], strides=[2, 2],
+          padding='SAME'),
+      tfp.layers.Convolution2DFlipout(
+          64, kernel_size=3, padding='SAME',
+          kernel_divergence_fn=kl_divergence_function,
+          activation=tf.nn.relu),
+      tf.keras.layers.MaxPooling2D(
+          pool_size=[2, 2], strides=[2, 2],
+          padding='SAME'),
+      tf.keras.layers.Flatten(),
+      tfp.layers.DenseFlipout(
+          128, kernel_divergence_fn=kl_divergence_function,
+          activation=tf.nn.relu),
+      LDPC_DropConnect_Flipout(
+          units=64, prob=0.25, 
+          kernel_divergence_fn=kl_divergence_function, 
+          activation="relu", name='LDPC_flipout'),
+      tfp.layers.DenseFlipout(
+          NUM_CLASSES, kernel_divergence_fn=kl_divergence_function,
+          activation=tf.nn.softmax)
+  ], name = "Model3_Config3")
+
+  models = [model30,model33]
   # Model compilation.
   optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
   # We use the categorical_crossentropy loss since the MNIST dataset contains
@@ -210,9 +293,10 @@ def create_model():
   # Kullback-Leibler divergence (contained on the individual layers of
   # the model), to the cross entropy loss, effectively
   # calcuating the (negated) Evidence Lower Bound Loss (ELBO)
-  model.compile(optimizer, loss='categorical_crossentropy',
+  for model in models:
+    model.compile(optimizer, loss='categorical_crossentropy',
                 metrics=['accuracy'], experimental_run_tf_function=False)
-  return model
+  return models
 
 
 class MNISTSequence(tf.keras.utils.Sequence):
@@ -283,11 +367,11 @@ class MNISTSequence(tf.keras.utils.Sequence):
 
 def main(argv):
   del argv  # unused
-  if tf.io.gfile.exists(FLAGS.model_dir):
-    tf.compat.v1.logging.warning(
-        'Warning: deleting old log directory at {}'.format(FLAGS.model_dir))
-    tf.io.gfile.rmtree(FLAGS.model_dir)
-  tf.io.gfile.makedirs(FLAGS.model_dir)
+  # if tf.io.gfile.exists(FLAGS.model_dir):
+  #   tf.compat.v1.logging.warning(
+  #       'Warning: deleting old log directory at {}'.format(FLAGS.model_dir))
+  #   tf.io.gfile.rmtree(FLAGS.model_dir)
+  # tf.io.gfile.makedirs(FLAGS.model_dir)
 
   if FLAGS.fake_data:
     train_seq = MNISTSequence(batch_size=FLAGS.batch_size,
@@ -299,66 +383,81 @@ def main(argv):
     train_seq = MNISTSequence(data=train_set, batch_size=FLAGS.batch_size)
     test_seq = MNISTSequence(data=test_set, batch_size=FLAGS.batch_size)
 
-  model = create_model()
+  models = create_model()
   # TODO(b/149259388): understand why Keras does not automatically build the
   # model correctly.
-  model.build(input_shape=[None, 28, 28, 1])
+  # test_reslt = []
+  for model in models:
+    model.build(input_shape=[None, 28, 28, 1])
+    model.summary()
 
-  print(' ... Training convolutional neural network')
-  for epoch in range(FLAGS.num_epochs):
-    epoch_accuracy, epoch_loss = [], []
-    for step, (batch_x, batch_y) in enumerate(train_seq):
-      batch_loss, batch_accuracy = model.train_on_batch(
-          batch_x, batch_y)
-      epoch_accuracy.append(batch_accuracy)
-      epoch_loss.append(batch_loss)
+    result_path = os.path.join(FLAGS.rec_dir, 'elbo_{}.txt'.format(model.name))
+    print(' ... ELBO will be recorded in %s'%(result_path))
 
-      if step % 100 == 0:
-        print('Epoch: {}, Batch index: {}, '
-              'Loss: {:.3f}, Accuracy: {:.3f}'.format(
-                  epoch, step,
-                  tf.reduce_mean(epoch_loss),
-                  tf.reduce_mean(epoch_accuracy)))
+    print(' ... Training {}'.format(model.name))
+    for epoch in range(FLAGS.num_epochs):
+      epoch_accuracy, epoch_loss = [], []
+      for step, (batch_x, batch_y) in enumerate(train_seq):
+        batch_loss, batch_accuracy = model.train_on_batch(
+            batch_x, batch_y)
+        epoch_accuracy.append(batch_accuracy)
+        epoch_loss.append(batch_loss)
 
-      if (step+1) % FLAGS.viz_steps == 0:   # viz_step=400, this reaches last few steps in one epoch.
-        # 60000 / 128 = 468.75, launch monte carlo at the (almost) end of an epoch.
-        # Compute log prob of heldout set by averaging draws from the model:
-        # p(heldout | train) = int_model p(heldout|model) p(model|train)
-        #                   ~= 1/n * sum_{i=1}^n p(heldout | model_i)
-        # where model_i is a draw from the posterior p(model|train).
-        print(' ... Running monte carlo inference')
-        probs = tf.stack([model.predict(test_seq, verbose=1)
-                          for _ in range(FLAGS.num_monte_carlo)], axis=0)
-        mean_probs = tf.reduce_mean(probs, axis=0)
-        log_loss = tf.reduce_mean(tf.math.log(mean_probs))
+        if step % 100 == 0:
+          print('Epoch: {}, Batch index: {}, '
+                'Loss: {:.3f}, Accuracy: {:.3f}'.format(
+                    epoch, step,
+                    tf.reduce_mean(epoch_loss),
+                    tf.reduce_mean(epoch_accuracy)))
 
-        l2_loss = tf.reduce_sum(FLAGS.lmbda * tf.stack([tf.nn.l2_loss(v) for v in tf.compat.v1.get_collection('weights')]))
-        
-        neg_elbo = log_loss + l2_loss
+        if (step+1) % FLAGS.viz_steps == 0:   # viz_step=400, this reaches last few steps in one epoch.
+          # 60000 / 128 = 468.75, launch monte carlo at the (almost) end of an epoch.
+          # Compute log prob of heldout set by averaging draws from the model:
+          # p(heldout | train) = int_model p(heldout|model) p(model|train)
+          #                   ~= 1/n * sum_{i=1}^n p(heldout | model_i)
+          # where model_i is a draw from the posterior p(model|train).
+          print(' ... Running monte carlo inference')
+          probs = tf.stack([model.predict(test_seq, verbose=1)
+                            for _ in range(FLAGS.num_monte_carlo)], axis=0)
+          mean_probs = tf.reduce_mean(probs, axis=0)
+          log_loss = tf.reduce_mean(tf.math.log(mean_probs))
 
-        print(' ... Negative ELBO: {:.3f}'.format(neg_elbo))
+          l2_loss = tf.reduce_sum(FLAGS.lmbda * tf.stack([tf.nn.l2_loss(v) for v in tf.compat.v1.get_collection('weights')]))
+          
+          neg_elbo = log_loss + l2_loss
+          # print('...log_loss: {:.3f}'.format(log_loss))
+          print(' ... Negative ELBO: {:.5f}'.format(neg_elbo))
+          with open(result_path, 'a+') as f:
+            f.write(f"{neg_elbo}\n")
 
-        if HAS_SEABORN:
-          names = [layer.name for layer in model.layers
-                   if 'flipout' in layer.name]
-          qm_vals = [layer.kernel_posterior.mean().numpy()
-                     for layer in model.layers
-                     if 'flipout' in layer.name]
-          qs_vals = [layer.kernel_posterior.stddev().numpy()
-                     for layer in model.layers
-                     if 'flipout' in layer.name]
-          plot_weight_posteriors(names, qm_vals, qs_vals,
-                                 fname=os.path.join(
-                                     FLAGS.model_dir,
-                                     'epoch{}_step{:05d}_weights.png'.format(
-                                         epoch, step)))
-          plot_heldout_prediction(test_seq.images, probs.numpy(),
-                                  fname=os.path.join(
-                                      FLAGS.model_dir,
-                                      'epoch{}_step{}_pred.png'.format(
-                                          epoch, step)),
-                                  title='mean heldout logprob {:.2f}'
-                                  .format(log_loss))
+          if HAS_SEABORN:
+            if epoch % 10 == 0:
+              mname = model.name
+              names = [layer.name for layer in model.layers
+                      if 'flipout' in layer.name]
+              qm_vals = [layer.kernel_posterior.mean().numpy()
+                        for layer in model.layers
+                        if 'flipout' in layer.name]
+              qs_vals = [layer.kernel_posterior.stddev().numpy()
+                        for layer in model.layers
+                        if 'flipout' in layer.name]
+              plot_weight_posteriors(mname, names, qm_vals, qs_vals,
+                                    fname=os.path.join(
+                                        FLAGS.model_dir,
+                                        'epoch{}_step{:05d}_weights_{}.png'.format(
+                                            epoch, step, mname)))
+              plot_heldout_prediction(test_seq.images, probs.numpy(),
+                                      fname=os.path.join(
+                                          FLAGS.model_dir,
+                                          'epoch{}_step{}_pred_{}.png'.format(
+                                              FLAGS.num_epochs-epoch-1, step, mname)),
+                                      title='Prediction at epoch {} in {}'
+                                      .format(epoch, mname))
+
+    results = model.evaluate(test_seq, batch_size=64, verbose=1)  
+    with open(result_path, 'a+') as f:
+      f.write("\nEvaluation results:\nloss={}\t acc={}\n".format(results[0], results[1]))     
+    # test_reslt.append(results)                               
 
 
 if __name__ == '__main__':
