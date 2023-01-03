@@ -1,3 +1,0 @@
-Evaluation results of Model1_Config1: 
-[0.046271284052100965, 0.9872]
-
